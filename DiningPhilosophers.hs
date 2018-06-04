@@ -2,10 +2,7 @@ module DiningPhilosopers where
 
 import Control.Concurrent (threadDelay, forkIO, killThread, ThreadId)
 import Control.Concurrent.STM (STM, atomically, retry, TMVar, newTMVarIO, isEmptyTMVar, putTMVar, takeTMVar, check)
-
-import Control.Concurrent.STM.TQueue
-  (TQueue, newTQueueIO, writeTQueue, readTQueue, isEmptyTQueue)
-
+import Control.Concurrent.STM.TQueue (TQueue, newTQueueIO, writeTQueue, readTQueue, isEmptyTQueue)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Random (randomRIO)
 import Data.Traversable (for)
@@ -43,14 +40,14 @@ getLeftForkID i n = (i - 1 `mod` n)
 getRightForkID :: Int -> Int -> Int
 getRightForkID i n = (i `mod` n)
 
-forkAvailable :: TMVar Fork -> STM Bool
-forkAvailable forkTV = not <$> isEmptyTMVar forkTV
+forkReady :: TMVar Fork -> STM Bool
+forkReady fork = not `fmap` (isEmptyTMVar fork)
 
 philosophers :: [TMVar Fork] -> Int -> Int -> IO ()
 philosophers forks i n = forever $ do 
   (leftFork, rightFork) <- atomically $ do
-    takeLeftFork  <- forkAvailable (getLeftFork forks i) -- Is left fork free?
-    takeRightFork <- forkAvailable (getRightFork forks i) -- Is right fork free?
+    takeLeftFork  <- forkReady (getLeftFork forks i) -- Is left fork ready?
+    takeRightFork <- forkReady (getRightFork forks i) -- Is right fork ready?
     if (takeLeftFork && takeRightFork) then do -- True, True -> Take them both and start eating, otherwise keep on trying
       a <- takeTMVar (getLeftFork forks i) 
       b <- takeTMVar (getRightFork forks i)
